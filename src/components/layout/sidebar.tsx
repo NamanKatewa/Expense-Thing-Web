@@ -4,7 +4,6 @@ import {
 	Activity,
 	CreditCard,
 	LayoutDashboard,
-	LogOut,
 	Menu,
 	Plus,
 	Receipt,
@@ -17,7 +16,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Sheet, SheetContent } from "~/components/ui/sheet";
-import { signOutAction } from "./sign-out-action";
+import { SignOutButton } from "./sign-out-button";
 
 interface SidebarProps {
 	session: {
@@ -70,15 +69,7 @@ function SidebarContent({ pathname }: { pathname: string }) {
 					<Settings className="h-5 w-5" />
 					Settings
 				</Link>
-				<form action={signOutAction}>
-					<button
-						className="flex w-full items-center gap-3 border-2 border-transparent px-4 py-3 font-bold text-[#E05D36] text-sm uppercase tracking-wider transition-colors hover:border-[#E05D36] hover:bg-[#FFF0EB] dark:hover:bg-[#331100]"
-						type="submit"
-					>
-						<LogOut className="h-5 w-5" />
-						Sign out
-					</button>
-				</form>
+				<SignOutButton variant="sidebar" />
 			</div>
 		</>
 	);

@@ -256,17 +256,21 @@ export const groupRouter = createTRPCRouter({
 				},
 			});
 		}),
-
 	getBalances: protectedProcedure
 		.input(z.object({ groupId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const expenses = await ctx.db.expense.findMany({
-				where: { groupId: input.groupId },
-				include: {
-					payers: true,
-					splits: true,
-				},
-			});
+			const [expenses, settlements] = await ctx.db.$transaction([
+				ctx.db.expense.findMany({
+					where: { groupId: input.groupId },
+					include: {
+						payers: true,
+						splits: true,
+					},
+				}),
+				ctx.db.settlement.findMany({
+					where: { groupId: input.groupId },
+				}),
+			]);
 
 			const balances: Record<string, number> = {};
 
@@ -280,6 +284,18 @@ export const groupRouter = createTRPCRouter({
 					balances[split.userId] =
 						(balances[split.userId] || 0) - Number(split.value);
 				}
+			}
+
+			for (const settlement of settlements) {
+				balances[settlement.fromUserId] =
+					(balances[settlement.fromUserId] || 0) + Number(settlement.amount);
+				balances[settlement.toUserId] =
+					(balances[settlement.toUserId] || 0) - Number(settlement.amount);
+			}
+
+			// Round to 2 decimal places
+			for (const userId in balances) {
+				balances[userId] = Math.round((balances[userId] ?? 0) * 100) / 100;
 			}
 
 			return balances;

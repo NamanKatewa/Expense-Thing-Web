@@ -47,7 +47,7 @@ export default function DashboardPage() {
 				</p>
 			</div>
 
-			<div className="grid grid-cols-1 gap-0 border-4 border-black md:grid-cols-2 lg:grid-cols-4 dark:border-white">
+			<div className="grid grid-cols-1 gap-0 border-4 border-black md:grid-cols-2 lg:grid-cols-5 dark:border-white">
 				<div className="group relative border-black p-8 transition-all hover:bg-black hover:text-white md:border-r-4 dark:border-white dark:hover:bg-white dark:hover:text-black">
 					<div className="brutal-shadow-sm flex h-12 w-12 items-center justify-center border-2 border-black bg-[#002FA7] text-white dark:border-white">
 						<Users className="h-6 w-6" />
@@ -73,13 +73,25 @@ export default function DashboardPage() {
 				</div>
 
 				<div className="group relative border-black p-8 transition-all hover:bg-black hover:text-white md:border-r-4 dark:border-white dark:hover:bg-white dark:hover:text-black">
+					<div className="brutal-shadow-sm flex h-12 w-12 items-center justify-center border-2 border-black bg-zinc-400 text-black dark:border-white">
+						<Wallet className="h-6 w-6" />
+					</div>
+					<p className="mt-8 font-black font-sans text-sm uppercase tracking-widest opacity-60 group-hover:opacity-100">
+						Group Total
+					</p>
+					<p className="mt-2 font-bold font-serif text-4xl">
+						{formatCurrency(overview?.groupSpent ?? 0)}
+					</p>
+				</div>
+
+				<div className="group relative border-black p-8 transition-all hover:bg-black hover:text-white md:border-r-4 dark:border-white dark:hover:bg-white dark:hover:text-black">
 					<div className="brutal-shadow-sm flex h-12 w-12 items-center justify-center border-2 border-black bg-[#B1D182] text-black dark:border-white">
 						<Wallet className="h-6 w-6" />
 					</div>
 					<p className="mt-8 font-black font-sans text-sm uppercase tracking-widest opacity-60 group-hover:opacity-100">
-						Total Spent
+						Your Spent
 					</p>
-					<p className="mt-2 font-bold font-serif text-6xl">
+					<p className="mt-2 font-bold font-serif text-4xl">
 						{formatCurrency(overview?.totalSpent ?? 0)}
 					</p>
 				</div>
@@ -93,7 +105,7 @@ export default function DashboardPage() {
 					<p className="mt-8 font-black font-sans text-sm uppercase tracking-widest opacity-60 group-hover:opacity-100">
 						Your Balance
 					</p>
-					<p className="mt-2 font-bold font-serif text-6xl">
+					<p className="mt-2 font-bold font-serif text-4xl">
 						{(overview?.balance ?? 0) >= 0 ? "+" : ""}
 						{formatCurrency(overview?.balance ?? 0)}
 					</p>

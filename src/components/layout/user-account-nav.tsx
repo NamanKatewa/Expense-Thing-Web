@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { LayoutDashboard, Settings } from "lucide-react";
 import Link from "next/link";
 import {
 	DropdownMenu,
@@ -9,7 +9,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { signOutAction } from "./sign-out-action";
+import { SignOutButton } from "./sign-out-button";
 
 interface UserAccountNavProps {
 	user: {
@@ -59,17 +59,8 @@ export function UserAccountNav({ user }: UserAccountNavProps) {
 						</Link>
 					</DropdownMenuItem>
 					<DropdownMenuSeparator className="my-1 h-0.5 bg-black dark:bg-white" />
-					<DropdownMenuItem
-						className="cursor-pointer rounded-none p-3 font-black text-[#E05D36] uppercase tracking-widest focus:bg-[#E05D36] focus:text-white"
-						onSelect={(event) => {
-							event.preventDefault();
-							signOutAction();
-						}}
-					>
-						<div className="flex w-full items-center gap-3">
-							<LogOut className="h-4 w-4 stroke-[3]" />
-							Sign out
-						</div>
+					<DropdownMenuItem className="cursor-pointer rounded-none p-3 font-black text-[#E05D36] uppercase tracking-widest focus:bg-[#E05D36] focus:text-white">
+						<SignOutButton variant="dropdown" />
 					</DropdownMenuItem>
 				</div>
 			</DropdownMenuContent>

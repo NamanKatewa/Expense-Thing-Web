@@ -28,6 +28,8 @@ export const dashboardRouter = createTRPCRouter({
 			expenses,
 			userPaidExpenses,
 			userExpensesForOwed,
+			settlementsFrom,
+			settlementsTo,
 		] = await Promise.all([
 			ctx.db.group.count({
 				where: { id: { in: groupIds } },
@@ -90,14 +92,29 @@ export const dashboardRouter = createTRPCRouter({
 					},
 				},
 			}),
+			// Get settlements paid by user
+			ctx.db.settlement.findMany({
+				where: {
+					fromUserId: userId,
+					groupId: { in: groupIds },
+				},
+				select: {
+					amount: true,
+				},
+			}),
+			// Get settlements received by user
+			ctx.db.settlement.findMany({
+				where: {
+					toUserId: userId,
+					groupId: { in: groupIds },
+				},
+				select: {
+					amount: true,
+				},
+			}),
 		]);
 
 		// 3. Process data in JS
-		const totalSpent = expenses.reduce(
-			(sum, exp) => sum + Number(exp.amount),
-			0,
-		);
-
 		const userPaid = userPaidExpenses.reduce(
 			(sum, p) => sum + Number(p.amount),
 			0,
@@ -108,7 +125,22 @@ export const dashboardRouter = createTRPCRouter({
 			return sum + (userSplit ? Number(userSplit.value) : 0);
 		}, 0);
 
-		const balance = userPaid - userOwes;
+		const totalSettledFrom = settlementsFrom.reduce(
+			(sum, s) => sum + Number(s.amount),
+			0,
+		);
+
+		const totalSettledTo = settlementsTo.reduce(
+			(sum, s) => sum + Number(s.amount),
+			0,
+		);
+
+		const balance = userPaid - userOwes + totalSettledFrom - totalSettledTo;
+
+		const totalSpent = expenses.reduce(
+			(sum, exp) => sum + Number(exp.amount),
+			0,
+		);
 
 		const categoryBreakdown: Record<string, number> = {};
 		for (const expense of expenses) {
@@ -119,7 +151,8 @@ export const dashboardRouter = createTRPCRouter({
 		return {
 			totalGroups,
 			totalExpenses,
-			totalSpent: Math.round(totalSpent * 100) / 100,
+			totalSpent: Math.round(userPaid * 100) / 100, // Now user spending
+			groupSpent: Math.round(totalSpent * 100) / 100, // Added for completeness
 			balance: Math.round(balance * 100) / 100,
 			pendingSettlements,
 			recentExpenses: expenses.slice(0, 5),
@@ -135,65 +168,6 @@ export const dashboardRouter = createTRPCRouter({
 	getStats: protectedProcedure.query(async ({ ctx }) => {
 		const userId = ctx.session.user.id;
 
-		const [totalGroups, totalExpenses, recentExpenses, pendingSettlements] =
-			await Promise.all([
-				ctx.db.group.count({
-					where: {
-						members: {
-							some: { userId },
-						},
-					},
-				}),
-
-				ctx.db.expense.count({
-					where: {
-						group: {
-							members: {
-								some: { userId },
-							},
-						},
-					},
-				}),
-
-				ctx.db.expense.findMany({
-					where: {
-						group: {
-							members: {
-								some: { userId },
-							},
-						},
-					},
-					include: {
-						group: {
-							select: {
-								id: true,
-								name: true,
-							},
-						},
-						createdBy: {
-							select: {
-								id: true,
-								name: true,
-								image: true,
-							},
-						},
-					},
-					orderBy: { date: "desc" },
-					take: 5,
-				}),
-
-				ctx.db.settlement.count({
-					where: {
-						group: {
-							members: {
-								some: { userId },
-							},
-						},
-						isPartial: true,
-					},
-				}),
-			]);
-
 		const userGroups = await ctx.db.group.findMany({
 			where: {
 				members: {
@@ -207,65 +181,128 @@ export const dashboardRouter = createTRPCRouter({
 
 		const groupIds = userGroups.map((g) => g.id);
 
-		const expensesInGroups = await ctx.db.expense.findMany({
-			where: {
-				groupId: { in: groupIds },
-			},
-			select: {
-				amount: true,
-			},
-		});
+		const [
+			totalGroups,
+			totalExpenses,
+			recentExpenses,
+			pendingSettlements,
+			userPaidExpenses,
+			userExpensesForOwed,
+			settlementsFrom,
+			settlementsTo,
+		] = await Promise.all([
+			ctx.db.group.count({
+				where: { id: { in: groupIds } },
+			}),
 
-		const totalSpent = expensesInGroups.reduce(
-			(sum, exp) => sum + Number(exp.amount),
-			0,
-		);
+			ctx.db.expense.count({
+				where: { groupId: { in: groupIds } },
+			}),
 
-		const userExpenses = await ctx.db.expense.findMany({
-			where: {
-				groupId: { in: groupIds },
-				splits: {
-					some: { userId },
-				},
-			},
-			select: {
-				splits: {
-					where: { userId },
-					select: {
-						value: true,
+			ctx.db.expense.findMany({
+				where: { groupId: { in: groupIds } },
+				include: {
+					group: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
+					createdBy: {
+						select: {
+							id: true,
+							name: true,
+							image: true,
+						},
 					},
 				},
-			},
-		});
+				orderBy: { date: "desc" },
+				take: 5,
+			}),
 
-		const userOwes = userExpenses.reduce((sum, exp) => {
-			const userSplit = exp.splits[0];
-			return sum + (userSplit ? Number(userSplit.value) : 0);
-		}, 0);
+			ctx.db.settlement.count({
+				where: {
+					groupId: { in: groupIds },
+					isPartial: true,
+				},
+			}),
 
-		const userPaidExpenses = await ctx.db.expensePayer.findMany({
-			where: {
-				userId,
-				expense: {
+			ctx.db.expensePayer.findMany({
+				where: {
+					userId,
+					expense: {
+						groupId: { in: groupIds },
+					},
+				},
+				select: {
+					amount: true,
+				},
+			}),
+
+			ctx.db.expense.findMany({
+				where: {
+					groupId: { in: groupIds },
+					splits: {
+						some: { userId },
+					},
+				},
+				select: {
+					splits: {
+						where: { userId },
+						select: {
+							value: true,
+						},
+					},
+				},
+			}),
+
+			ctx.db.settlement.findMany({
+				where: {
+					fromUserId: userId,
 					groupId: { in: groupIds },
 				},
-			},
-			select: {
-				amount: true,
-			},
-		});
+				select: {
+					amount: true,
+				},
+			}),
+
+			ctx.db.settlement.findMany({
+				where: {
+					toUserId: userId,
+					groupId: { in: groupIds },
+				},
+				select: {
+					amount: true,
+				},
+			}),
+		]);
 
 		const userPaid = userPaidExpenses.reduce(
 			(sum, p) => sum + Number(p.amount),
 			0,
 		);
 
-		const balance = userPaid - userOwes;
+		const userOwes = userExpensesForOwed.reduce((sum, exp) => {
+			const userSplit = exp.splits[0];
+			return sum + (userSplit ? Number(userSplit.value) : 0);
+		}, 0);
+
+		const totalSettledFrom = settlementsFrom.reduce(
+			(sum, s) => sum + Number(s.amount),
+			0,
+		);
+
+		const totalSettledTo = settlementsTo.reduce(
+			(sum, s) => sum + Number(s.amount),
+			0,
+		);
+
+		const balance = userPaid - userOwes + totalSettledFrom - totalSettledTo;
 
 		return {
 			totalGroups,
 			totalExpenses,
-			totalSpent: Math.round(totalSpent * 100) / 100,
+			totalSpent: Math.round(userPaid * 100) / 100,
 			balance: Math.round(balance * 100) / 100,
 			pendingSettlements,
 			recentExpenses,
