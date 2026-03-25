@@ -1,69 +1,75 @@
+import { ArrowRight, Receipt } from "lucide-react";
 import Link from "next/link";
-
-import { LatestPost } from "~/app/_components/post";
+import { LandingContent } from "~/components/landing/landing-content";
+import { UserAccountNav } from "~/components/layout/user-account-nav";
 import { auth } from "~/server/auth";
-import { api, HydrateClient } from "~/trpc/server";
 
-export default async function Home() {
-	const hello = await api.post.hello({ text: "from tRPC" });
+export default async function LandingPage() {
 	const session = await auth();
 
-	if (session?.user) {
-		void api.post.getLatest.prefetch();
-	}
-
 	return (
-		<HydrateClient>
-			<main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-				<div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-					<h1 className="font-extrabold text-5xl tracking-tight sm:text-[5rem]">
-						Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-					</h1>
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-						<Link
-							className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-							href="https://create.t3.gg/en/usage/first-steps"
-							target="_blank"
-						>
-							<h3 className="font-bold text-2xl">First Steps →</h3>
-							<div className="text-lg">
-								Just the basics - Everything you need to know to set up your
-								database and authentication.
-							</div>
-						</Link>
-						<Link
-							className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-							href="https://create.t3.gg/en/introduction"
-							target="_blank"
-						>
-							<h3 className="font-bold text-2xl">Documentation →</h3>
-							<div className="text-lg">
-								Learn more about Create T3 App, the libraries it uses, and how
-								to deploy it.
-							</div>
-						</Link>
-					</div>
-					<div className="flex flex-col items-center gap-2">
-						<p className="text-2xl text-white">
-							{hello ? hello.greeting : "Loading tRPC query..."}
-						</p>
-
-						<div className="flex flex-col items-center justify-center gap-4">
-							<p className="text-center text-2xl text-white">
-								{session && <span>Logged in as {session.user?.name}</span>}
-							</p>
-							<Link
-								className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-								href={session ? "/api/auth/signout" : "/api/auth/signin"}
-							>
-								{session ? "Sign out" : "Sign in"}
-							</Link>
+		<div className="min-h-screen bg-background text-foreground selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
+			<nav className="fixed top-0 right-0 left-0 z-50 border-black border-b-2 bg-background dark:border-white">
+				<div className="mx-auto flex h-16 w-full items-center justify-between px-6">
+					<Link className="flex items-center gap-3" href="/">
+						<div className="brutal-shadow-sm flex h-8 w-8 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
+							<Receipt className="h-4 w-4" />
 						</div>
+						<span className="font-bold font-serif text-2xl uppercase tracking-tight">
+							ExpenseThing
+						</span>
+					</Link>
+					<div className="flex items-center gap-6">
+						{session?.user ? (
+							<>
+								<Link
+									className="font-medium font-sans text-sm uppercase tracking-wider decoration-2 underline-offset-4 hover:underline"
+									href="/dashboard"
+								>
+									Dashboard
+								</Link>
+								<UserAccountNav user={session.user} />
+							</>
+						) : (
+							<>
+								<Link
+									className="font-medium font-sans text-sm uppercase tracking-wider decoration-2 underline-offset-4 hover:underline"
+									href="/login"
+								>
+									Sign in
+								</Link>
+								<Link
+									className="brutal-shadow-sm flex h-10 items-center gap-2 border-2 border-black bg-black px-5 font-bold font-sans text-sm text-white uppercase tracking-wider transition-all hover:bg-white hover:text-black dark:border-white dark:bg-white dark:text-black dark:hover:bg-black dark:hover:text-white"
+									href="/register"
+								>
+									Get started
+									<ArrowRight className="h-4 w-4" />
+								</Link>
+							</>
+						)}
 					</div>
-
-					{session?.user && <LatestPost />}
 				</div>
-			</main>
-		</HydrateClient>
+			</nav>
+
+			<LandingContent />
+
+			<footer className="border-black border-t-2 bg-background py-16 dark:border-white">
+				<div className="mx-auto w-full px-6">
+					<div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+						<div className="flex items-center gap-3">
+							<div className="flex h-8 w-8 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
+								<Receipt className="h-4 w-4" />
+							</div>
+							<span className="font-bold font-serif text-3xl uppercase">
+								ExpenseThing
+							</span>
+						</div>
+						<p className="font-medium font-sans text-sm uppercase tracking-widest">
+							© {new Date().getFullYear()} EXPENSETHING. ALL RIGHTS RESERVED.
+						</p>
+					</div>
+				</div>
+			</footer>
+		</div>
 	);
 }

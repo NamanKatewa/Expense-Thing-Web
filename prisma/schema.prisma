@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
     provider = "prisma-client-js"
     output   = "../generated/prisma"
@@ -8,23 +5,171 @@ generator client {
 
 datasource db {
     provider = "postgresql"
-    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-    // Further reading:
-    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
     url      = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+model User {
+    id            String    @id @default(cuid())
+    name          String?
+    email         String?   @unique
+    password      String?
+    image         String?
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
 
-    createdBy   User   @relation(fields: [createdById], references: [id])
+    accounts      Account[]
+    sessions      Session[]
+    
+    groups        GroupMember[]
+    expenses      Expense[]        @relation("ExpenseCreator")
+    payerExpenses ExpensePayer[]
+    splits        ExpenseSplit[]
+    settlementsFrom Settlement[] @relation("SettlementFrom")
+    settlementsTo   Settlement[] @relation("SettlementTo")
+  createdActivities Activity[]
+}
+
+model Group {
+    id          String   @id @default(cuid())
+    name        String
+    description String?
+    image       String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    members     GroupMember[]
+    expenses    Expense[]
+    settlements Settlement[]
+    activities  Activity[]
+}
+
+model GroupMember {
+    id        String   @id @default(cuid())
+    userId    String
+    groupId   String
+    role      MemberRole @default(MEMBER)
+    joinedAt  DateTime @default(now())
+
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, groupId])
+}
+
+enum MemberRole {
+    OWNER
+    ADMIN
+    MEMBER
+}
+
+enum ExpenseCategory {
+    FOOD
+    TRANSPORT
+    HOUSING
+    UTILITIES
+    ENTERTAINMENT
+    SHOPPING
+    HEALTHCARE
+    TRAVEL
+    EDUCATION
+    OTHER
+}
+
+enum SplitType {
+    EQUAL
+    EXACT
+    PERCENTAGE
+    SHARES
+}
+
+model Expense {
+    id          String   @id @default(cuid())
+    description String
+    amount      Decimal  @db.Decimal(10, 2)
+    date        DateTime
+    category    ExpenseCategory
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    groupId     String
     createdById String
 
-    @@index([name])
+    group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+    createdBy   User     @relation("ExpenseCreator", fields: [createdById], references: [id])
+    
+    payers      ExpensePayer[]
+    splits      ExpenseSplit[]
+    activities  Activity[]
+}
+
+model ExpensePayer {
+    id        String   @id @default(cuid())
+    expenseId String
+    userId    String
+    amount    Decimal  @db.Decimal(10, 2)
+    isPaid    Boolean  @default(false)
+
+    expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+    user      User     @relation(fields: [userId], references: [id])
+
+    @@unique([expenseId, userId])
+}
+
+model ExpenseSplit {
+    id        String   @id @default(cuid())
+    expenseId String
+    userId    String
+    type      SplitType
+    value     Decimal  @db.Decimal(10, 2)
+    
+    expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+    user      User     @relation(fields: [userId], references: [id])
+
+    @@unique([expenseId, userId])
+}
+
+model Settlement {
+    id          String   @id @default(cuid())
+    amount      Decimal  @db.Decimal(10, 2)
+    description String?
+    date        DateTime @default(now())
+    createdAt   DateTime @default(now())
+    isPartial   Boolean  @default(false)
+    remainingAmount Decimal? @db.Decimal(10, 2)
+
+    groupId    String
+    fromUserId String
+    toUserId   String
+
+    group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+    fromUser   User     @relation("SettlementFrom", fields: [fromUserId], references: [id])
+    toUser     User     @relation("SettlementTo", fields: [toUserId], references: [id])
+}
+
+enum ActivityType {
+    EXPENSE_CREATED
+    EXPENSE_EDITED
+    EXPENSE_DELETED
+    SETTLEMENT_CREATED
+    MEMBER_JOINED
+    MEMBER_LEFT
+    GROUP_CREATED
+}
+
+model Activity {
+    id        String   @id @default(cuid())
+    type      ActivityType
+    metadata  Json?
+    createdAt DateTime @default(now())
+
+    userId    String
+    groupId   String?
+
+    user      User     @relation(fields: [userId], references: [id])
+    group     Group?   @relation(fields: [groupId], references: [id])
+    expense   Expense? @relation(fields: [expenseId], references: [id])
+    expenseId String?
 }
 
 // Necessary for Next auth
@@ -34,12 +179,12 @@ model Account {
     type                     String
     provider                 String
     providerAccountId        String
-    refresh_token            String? // @db.Text
-    access_token             String? // @db.Text
+    refresh_token            String?
+    access_token             String?
     expires_at               Int?
     token_type               String?
     scope                    String?
-    id_token                 String? // @db.Text
+    id_token                 String?
     session_state            String?
     user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
     refresh_token_expires_in Int?
@@ -53,17 +198,6 @@ model Session {
     userId       String
     expires      DateTime
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
-    posts         Post[]
 }
 
 model VerificationToken {
