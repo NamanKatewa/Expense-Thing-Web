@@ -1,4 +1,5 @@
-import { ArrowRight, Receipt } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { LandingContent } from "~/components/landing/landing-content";
 import { UserAccountNav } from "~/components/layout/user-account-nav";
@@ -12,9 +13,7 @@ export default async function LandingPage() {
 			<nav className="fixed top-0 right-0 left-0 z-50 border-black border-b-2 bg-background dark:border-white">
 				<div className="mx-auto flex h-16 w-full items-center justify-between px-6">
 					<Link className="flex items-center gap-3" href="/">
-						<div className="brutal-shadow-sm flex h-8 w-8 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-							<Receipt className="h-4 w-4" />
-						</div>
+						<Image alt="Logo" height={32} src="/logo.png" width={32} />
 						<span className="font-bold font-serif text-2xl uppercase tracking-tight">
 							Expense Thing
 						</span>
@@ -57,9 +56,7 @@ export default async function LandingPage() {
 				<div className="mx-auto w-full px-6">
 					<div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
 						<div className="flex items-center gap-3">
-							<div className="flex h-8 w-8 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-								<Receipt className="h-4 w-4" />
-							</div>
+							<Image alt="Logo" height={32} src="/logo.png" width={32} />
 							<span className="font-bold font-serif text-3xl uppercase">
 								Expense Thing
 							</span>

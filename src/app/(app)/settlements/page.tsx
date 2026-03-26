@@ -184,6 +184,8 @@ export default function SettlementsPage() {
 			void utils.settlement.getSuggested.invalidate({
 				groupId: selectedGroup!,
 			});
+			void utils.group.getById.invalidate({ id: selectedGroup! });
+			void utils.dashboard.invalidate();
 			setSettlementToDelete(null);
 		},
 	});
@@ -390,6 +392,8 @@ export default function SettlementsPage() {
 						void utils.settlement.getAllByGroup.invalidate({
 							groupId: selectedGroup!,
 						});
+						void utils.group.getById.invalidate({ id: selectedGroup! });
+						void utils.dashboard.invalidate();
 					}}
 					suggestion={showSettlementModal.suggestion}
 				/>

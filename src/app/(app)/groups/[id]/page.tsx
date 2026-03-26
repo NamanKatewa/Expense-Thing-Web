@@ -34,17 +34,21 @@ export default function GroupDetailPage() {
 	const addExpenseMutation = api.expense.create.useMutation({
 		onSuccess: () => {
 			void utils.group.getById.invalidate({ id });
+			void utils.dashboard.invalidate();
 		},
 	});
 
 	const deleteExpenseMutation = api.expense.delete.useMutation({
 		onSuccess: () => {
 			void utils.group.getById.invalidate({ id });
+			void utils.dashboard.invalidate();
 		},
 	});
 
 	const deleteGroupMutation = api.group.delete.useMutation({
 		onSuccess: () => {
+			void utils.group.getAll.invalidate();
+			void utils.dashboard.invalidate();
 			window.location.href = "/groups";
 		},
 	});
@@ -395,7 +399,10 @@ export default function GroupDetailPage() {
 				<AddMemberModal
 					groupId={id}
 					onClose={() => setShowAddMember(false)}
-					onSuccess={() => void utils.group.getById.invalidate({ id })}
+					onSuccess={() => {
+						void utils.group.getById.invalidate({ id });
+						void utils.dashboard.invalidate();
+					}}
 				/>
 			)}
 		</div>

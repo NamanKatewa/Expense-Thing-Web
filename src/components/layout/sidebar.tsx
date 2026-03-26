@@ -6,11 +6,11 @@ import {
 	LayoutDashboard,
 	Menu,
 	Plus,
-	Receipt,
 	Settings,
 	TrendingUp,
 	Users,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -101,10 +101,8 @@ export function Sidebar({ session }: SidebarProps) {
 		<>
 			<aside className="hidden border-black border-r-2 bg-background text-foreground lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col dark:border-white">
 				<div className="flex h-20 shrink-0 items-center gap-4 border-black border-b-2 px-6 dark:border-white">
-					<Link className="flex items-center gap-3" href="/dashboard">
-						<div className="brutal-shadow-sm flex h-10 w-10 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-							<Receipt className="h-5 w-5" />
-						</div>
+					<Link className="flex items-center gap-3" href="/">
+						<Image alt="Logo" height={40} src="/logo.png" width={40} />
 						<span className="font-bold font-serif text-2xl text-foreground uppercase tracking-tight">
 							Expense Thing
 						</span>
@@ -119,10 +117,8 @@ export function Sidebar({ session }: SidebarProps) {
 			</aside>
 
 			<header className="flex h-20 items-center justify-between border-black border-b-2 bg-background px-6 lg:hidden dark:border-white">
-				<Link className="flex items-center gap-3" href="/dashboard">
-					<div className="brutal-shadow-sm flex h-10 w-10 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-						<Receipt className="h-5 w-5" />
-					</div>
+				<Link className="flex items-center gap-3" href="/">
+					<Image alt="Logo" height={40} src="/logo.png" width={40} />
 					<span className="font-bold font-serif text-2xl text-foreground uppercase tracking-tight">
 						ExpenseThing
 					</span>
@@ -144,10 +140,8 @@ export function Sidebar({ session }: SidebarProps) {
 				>
 					<aside className="flex h-full flex-col bg-background text-foreground">
 						<div className="flex h-20 shrink-0 items-center gap-3 border-black border-b-2 px-6 dark:border-white">
-							<Link className="flex items-center gap-3" href="/dashboard">
-								<div className="brutal-shadow-sm flex h-10 w-10 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-									<Receipt className="h-5 w-5" />
-								</div>
+							<Link className="flex items-center gap-3" href="/">
+								<Image alt="Logo" height={40} src="/logo.png" width={40} />
 								<span className="font-bold font-serif text-2xl text-foreground uppercase tracking-tight">
 									ExpenseThing
 								</span>

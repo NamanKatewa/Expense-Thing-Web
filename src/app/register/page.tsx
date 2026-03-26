@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Lock, Mail, Receipt, User } from "lucide-react";
+import { ArrowLeft, Lock, Mail, User } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -57,9 +58,7 @@ export default function RegisterPage() {
 			<nav className="fixed top-0 right-0 left-0 z-50 border-black border-b-2 bg-background px-6 dark:border-white">
 				<div className="mx-auto flex h-16 w-full items-center justify-between">
 					<Link className="flex items-center gap-3" href="/">
-						<div className="brutal-shadow-sm flex h-8 w-8 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-							<Receipt className="h-4 w-4" />
-						</div>
+						<Image alt="Logo" height={32} src="/logo.png" width={32} />
 						<span className="font-bold font-serif text-2xl uppercase tracking-tight">
 							ExpenseThing
 						</span>

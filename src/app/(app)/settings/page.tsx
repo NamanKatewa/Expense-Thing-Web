@@ -6,6 +6,7 @@ import { api } from "~/trpc/react";
 
 export default function SettingsPage() {
 	const { data: session, update } = useSession();
+	const utils = api.useUtils();
 	const [name, setName] = useState(session?.user?.name ?? "");
 	const [isUpdating, setIsUpdating] = useState(false);
 	const [message, setMessage] = useState<{
@@ -16,6 +17,8 @@ export default function SettingsPage() {
 	const updateProfile = api.user.update.useMutation({
 		onSuccess: async () => {
 			await update();
+			void utils.dashboard.invalidate();
+			void utils.group.invalidate();
 			setMessage({ text: "Profile updated successfully", type: "success" });
 			setIsUpdating(false);
 		},

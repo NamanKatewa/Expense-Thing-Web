@@ -251,7 +251,10 @@ export default function GroupsPage() {
 			{showCreateModal && (
 				<CreateGroupModal
 					onClose={() => setShowCreateModal(false)}
-					onSuccess={() => void utils.group.getAll.invalidate()}
+					onSuccess={() => {
+						void utils.group.getAll.invalidate();
+						void utils.dashboard.invalidate();
+					}}
 				/>
 			)}
 
@@ -259,7 +262,11 @@ export default function GroupsPage() {
 				<AddMemberModal
 					groupId={showAddMemberModal}
 					onClose={() => setShowAddMemberModal(null)}
-					onSuccess={() => void utils.group.getAll.invalidate()}
+					onSuccess={() => {
+						void utils.group.getAll.invalidate();
+						void utils.group.getById.invalidate({ id: showAddMemberModal });
+						void utils.dashboard.invalidate();
+					}}
 				/>
 			)}
 		</div>

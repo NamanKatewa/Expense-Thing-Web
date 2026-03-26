@@ -6,11 +6,11 @@ import {
 	LayoutDashboard,
 	LogOut,
 	Plus,
-	Receipt,
 	Settings,
 	TrendingUp,
 	Users,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAction } from "~/components/layout/sign-out-action";
@@ -39,10 +39,8 @@ export function AppSidebar({ session }: AppSidebarProps) {
 	return (
 		<aside className="hidden border-black border-r-4 bg-background text-foreground lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col dark:border-white">
 			<div className="flex h-20 shrink-0 items-center gap-4 border-black border-b-4 px-6 dark:border-white">
-				<Link className="flex items-center gap-3" href="/dashboard">
-					<div className="brutal-shadow-sm flex h-10 w-10 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-						<Receipt className="h-5 w-5" />
-					</div>
+				<Link className="flex items-center gap-3" href="/">
+					<Image alt="Logo" height={40} src="/logo.png" width={40} />
 					<span className="font-black font-serif text-2xl uppercase tracking-tighter">
 						ExpenseThing
 					</span>
