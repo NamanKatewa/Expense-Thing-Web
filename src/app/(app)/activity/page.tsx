@@ -26,9 +26,11 @@ function getActivityLabel(type: string) {
 		EXPENSE_EDITED: "EDITED AN EXPENSE",
 		EXPENSE_DELETED: "DELETED AN EXPENSE",
 		SETTLEMENT_CREATED: "RECORDED A SETTLEMENT",
+		SETTLEMENT_DELETED: "DELETED A SETTLEMENT",
 		MEMBER_JOINED: "JOINED THE GROUP",
 		MEMBER_LEFT: "LEFT THE GROUP",
 		GROUP_CREATED: "CREATED A GROUP",
+		GROUP_DELETED: "DELETED A GROUP",
 	};
 	return labels[type] || "DID SOMETHING";
 }
@@ -39,9 +41,11 @@ function getActivityIcon(type: string) {
 		EXPENSE_EDITED: "✏️",
 		EXPENSE_DELETED: "🗑️",
 		SETTLEMENT_CREATED: "🤝",
+		SETTLEMENT_DELETED: "🔥",
 		MEMBER_JOINED: "👋",
 		MEMBER_LEFT: "👋",
 		GROUP_CREATED: "✨",
+		GROUP_DELETED: "💥",
 	};
 	return icons[type] || "•";
 }

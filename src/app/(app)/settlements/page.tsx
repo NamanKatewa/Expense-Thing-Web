@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowRight, ChevronLeft } from "lucide-react";
+import { ArrowRight, ChevronLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { ConfirmModal } from "~/components/common/confirm-modal";
 import { api } from "~/trpc/react";
 
 function getInitials(name: string | null | undefined) {
@@ -156,6 +157,9 @@ export default function SettlementsPage() {
 			toUser: { id: string; name: string | null; image: string | null } | null;
 		};
 	} | null>(null);
+	const [settlementToDelete, setSettlementToDelete] = useState<string | null>(
+		null,
+	);
 
 	const utils = api.useUtils();
 	const { data: groups } = api.group.getAll.useQuery();
@@ -171,6 +175,24 @@ export default function SettlementsPage() {
 			{ groupId: selectedGroup! },
 			{ enabled: !!selectedGroup },
 		);
+
+	const deleteSettlementMutation = api.settlement.delete.useMutation({
+		onSuccess: () => {
+			void utils.settlement.getAllByGroup.invalidate({
+				groupId: selectedGroup!,
+			});
+			void utils.settlement.getSuggested.invalidate({
+				groupId: selectedGroup!,
+			});
+			setSettlementToDelete(null);
+		},
+	});
+
+	const handleDeleteSettlement = () => {
+		if (settlementToDelete) {
+			deleteSettlementMutation.mutate({ id: settlementToDelete });
+		}
+	};
 
 	const handleGroupChange = (groupId: string) => {
 		setSelectedGroup(groupId === selectedGroup ? null : groupId);
@@ -324,13 +346,22 @@ export default function SettlementsPage() {
 														{getInitials(settlement.toUser.name)}
 													</div>
 												</div>
-												<div className="text-right">
-													<p className="font-bold font-serif text-2xl">
-														{formatCurrency(Number(settlement.amount))}
-													</p>
-													<p className="font-black font-sans text-[10px] uppercase tracking-widest opacity-40">
-														{new Date(settlement.date).toLocaleDateString()}
-													</p>
+												<div className="flex items-center justify-end gap-4 text-right">
+													<div>
+														<p className="font-bold font-serif text-2xl">
+															{formatCurrency(Number(settlement.amount))}
+														</p>
+														<p className="font-black font-sans text-[10px] uppercase tracking-widest opacity-40">
+															{new Date(settlement.date).toLocaleDateString()}
+														</p>
+													</div>
+													<button
+														className="text-red-500 transition-colors hover:text-red-700"
+														onClick={() => setSettlementToDelete(settlement.id)}
+														title="Delete settlement"
+													>
+														<Trash2 className="h-5 w-5" />
+													</button>
 												</div>
 											</div>
 										</div>
@@ -361,6 +392,16 @@ export default function SettlementsPage() {
 						});
 					}}
 					suggestion={showSettlementModal.suggestion}
+				/>
+			)}
+
+			{settlementToDelete && (
+				<ConfirmModal
+					confirmText="DELETE SETTLEMENT"
+					description="Are you sure you want to delete this settlement record? Your balances will reopen."
+					onClose={() => setSettlementToDelete(null)}
+					onConfirm={handleDeleteSettlement}
+					title="DELETE SETTLEMENT"
 				/>
 			)}
 		</div>

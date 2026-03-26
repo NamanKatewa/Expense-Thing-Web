@@ -4,9 +4,18 @@ import { ArrowLeft, Plus, Settings, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useState } from "react";
 import { BalanceSummary } from "~/components/common/balance-summary";
+import { ConfirmModal } from "~/components/common/confirm-modal";
 import { AddExpenseModal } from "~/components/expense/add-expense-modal";
 import { ExpenseCard } from "~/components/expense/expense-card";
+import { AddMemberModal } from "~/components/group/add-member-modal";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { api } from "~/trpc/react";
 import type { Balance, Expense, Group, User } from "~/types";
 
@@ -16,6 +25,10 @@ export default function GroupDetailPage() {
 	const { data: session } = useSession();
 	const utils = api.useUtils();
 
+	const [showAddMember, setShowAddMember] = useState(false);
+	const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
+	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+
 	const { data: group, isLoading } = api.group.getById.useQuery({ id });
 
 	const addExpenseMutation = api.expense.create.useMutation({
@@ -23,6 +36,29 @@ export default function GroupDetailPage() {
 			void utils.group.getById.invalidate({ id });
 		},
 	});
+
+	const deleteExpenseMutation = api.expense.delete.useMutation({
+		onSuccess: () => {
+			void utils.group.getById.invalidate({ id });
+		},
+	});
+
+	const deleteGroupMutation = api.group.delete.useMutation({
+		onSuccess: () => {
+			window.location.href = "/groups";
+		},
+	});
+
+	const handleDeleteGroup = () => {
+		deleteGroupMutation.mutate({ id });
+	};
+
+	const handleDeleteExpense = () => {
+		if (expenseToDelete) {
+			deleteExpenseMutation.mutate({ id: expenseToDelete.id });
+			setExpenseToDelete(null);
+		}
+	};
 
 	if (isLoading) {
 		return (
@@ -83,6 +119,16 @@ export default function GroupDetailPage() {
 				if (balanceMap[split.userId]) {
 					balanceMap[split.userId]!.amount -= Number(split.value);
 				}
+			}
+		}
+
+		// Process settlements
+		for (const settlement of group.settlements) {
+			if (balanceMap[settlement.fromUserId]) {
+				balanceMap[settlement.fromUserId]!.amount += Number(settlement.amount);
+			}
+			if (balanceMap[settlement.toUserId]) {
+				balanceMap[settlement.toUserId]!.amount -= Number(settlement.amount);
 			}
 		}
 
@@ -186,9 +232,24 @@ export default function GroupDetailPage() {
 								</button>
 							}
 						/>
-						<button className="flex h-16 w-16 items-center justify-center border-4 border-black bg-white transition-all hover:bg-black hover:text-white dark:border-white dark:bg-black dark:hover:bg-white dark:hover:text-black">
-							<Settings className="h-8 w-8 stroke-[2]" />
-						</button>
+						<DropdownMenu>
+							<DropdownMenuTrigger>
+								<div className="flex h-16 w-16 items-center justify-center border-4 border-black bg-white transition-all hover:bg-black hover:text-white dark:border-white dark:bg-black dark:hover:bg-white dark:hover:text-black">
+									<Settings className="h-8 w-8 stroke-[2]" />
+								</div>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent
+								align="end"
+								className="brutal-shadow rounded-none border-2 border-black dark:border-white"
+							>
+								<DropdownMenuItem
+									className="cursor-pointer rounded-none font-black font-sans text-destructive text-red-600 text-xs uppercase tracking-widest dark:text-red-500"
+									onClick={() => setShowDeleteGroupConfirm(true)}
+								>
+									Delete Group
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
 				</div>
 			</div>
@@ -230,6 +291,7 @@ export default function GroupDetailPage() {
 										currentUserId={session?.user?.id}
 										expense={expense as unknown as Expense}
 										key={expense.id}
+										onDelete={(e) => setExpenseToDelete(e)}
 									/>
 								))
 							) : (
@@ -273,7 +335,10 @@ export default function GroupDetailPage() {
 								</div>
 							))}
 						</div>
-						<button className="mt-10 w-full border-2 border-black bg-zinc-100 py-4 font-black font-sans text-xs uppercase tracking-widest transition-all hover:bg-black hover:text-white dark:border-white dark:bg-zinc-900">
+						<button
+							className="mt-10 w-full border-2 border-black bg-zinc-100 py-4 font-black font-sans text-xs uppercase tracking-widest transition-all hover:bg-black hover:text-white dark:border-white dark:bg-zinc-900"
+							onClick={() => setShowAddMember(true)}
+						>
 							Enlist Operative
 						</button>
 					</section>
@@ -305,6 +370,34 @@ export default function GroupDetailPage() {
 					</section>
 				</div>
 			</div>
+
+			{showDeleteGroupConfirm && (
+				<ConfirmModal
+					confirmText="PURGE GROUP"
+					description="Are you sure you want to permanently delete this group? All expenses and settlements will be lost forever."
+					onClose={() => setShowDeleteGroupConfirm(false)}
+					onConfirm={handleDeleteGroup}
+					title="DELETE GROUP"
+				/>
+			)}
+
+			{expenseToDelete && (
+				<ConfirmModal
+					confirmText="DELETE EXPENSE"
+					description={`Are you sure you want to delete expense "${expenseToDelete.description}"?`}
+					onClose={() => setExpenseToDelete(null)}
+					onConfirm={handleDeleteExpense}
+					title="DELETE EXPENSE"
+				/>
+			)}
+
+			{showAddMember && (
+				<AddMemberModal
+					groupId={id}
+					onClose={() => setShowAddMember(false)}
+					onSuccess={() => void utils.group.getById.invalidate({ id })}
+				/>
+			)}
 		</div>
 	);
 }

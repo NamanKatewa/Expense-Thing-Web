@@ -20,7 +20,18 @@ export const activityRouter = createTRPCRouter({
 				take: limit + 1,
 				cursor: cursor ? { id: cursor } : undefined,
 				where: {
-					userId: ctx.session.user.id,
+					OR: [
+						{ userId: ctx.session.user.id },
+						{
+							group: {
+								members: {
+									some: {
+										userId: ctx.session.user.id,
+									},
+								},
+							},
+						},
+					],
 				},
 				include: {
 					user: {

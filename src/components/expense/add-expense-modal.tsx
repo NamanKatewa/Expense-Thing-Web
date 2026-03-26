@@ -72,6 +72,7 @@ export function AddExpenseModal({
 		group.members.map((m) => m.userId),
 	);
 	const [splitValues, setSplitValues] = useState<Record<string, number>>({});
+	const [error, setError] = useState<string | null>(null);
 
 	const resetForm = () => {
 		setDescription("");
@@ -85,13 +86,54 @@ export function AddExpenseModal({
 	};
 
 	const handleSubmit = () => {
+		setError(null);
 		if (!description || !amount || !payerId || selectedMembers.length === 0) {
+			setError("Please fill all fields and select at least one recruit.");
 			return;
+		}
+
+		const parsedAmount = parseFloat(amount);
+		if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+			setError("Amount must be greater than zero.");
+			return;
+		}
+
+		if (splitType === "PERCENTAGE") {
+			const totalPercentage = selectedMembers.reduce(
+				(sum, id) => sum + (splitValues[id] || 0),
+				0,
+			);
+			if (Math.abs(totalPercentage - 100) > 0.01) {
+				setError(
+					`Percentages must sum to exactly 100%. Currently: ${totalPercentage}%`,
+				);
+				return;
+			}
+		} else if (splitType === "EXACT") {
+			const totalExact = selectedMembers.reduce(
+				(sum, id) => sum + (splitValues[id] || 0),
+				0,
+			);
+			if (Math.abs(totalExact - parsedAmount) > 0.01) {
+				setError(
+					`Exact amounts must sum to the total expense ($${parsedAmount.toFixed(2)}). Currently: $${totalExact.toFixed(2)}`,
+				);
+				return;
+			}
+		} else if (splitType === "SHARES") {
+			const totalShares = selectedMembers.reduce(
+				(sum, id) => sum + (splitValues[id] || 0),
+				0,
+			);
+			if (totalShares <= 0) {
+				setError("Total shares must be greater than zero.");
+				return;
+			}
 		}
 
 		const data: AddExpenseData = {
 			description,
-			amount: parseFloat(amount),
+			amount: parsedAmount,
 			date,
 			category,
 			payerId,
@@ -389,6 +431,14 @@ export function AddExpenseModal({
 						</div>
 					)}
 				</div>
+
+				{error && (
+					<div className="mt-6 border-2 border-black bg-[#E05D36] p-4 dark:border-white">
+						<p className="font-black font-sans text-black text-xs uppercase tracking-widest dark:text-black">
+							WARNING: {error}
+						</p>
+					</div>
+				)}
 
 				<DialogFooter className="mt-10 gap-4">
 					<Button

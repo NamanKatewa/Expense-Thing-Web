@@ -118,6 +118,20 @@ export const settlementRouter = createTRPCRouter({
 	delete: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
+			const settlement = await ctx.db.settlement.findUnique({
+				where: { id: input.id },
+			});
+
+			if (settlement) {
+				await ctx.db.activity.create({
+					data: {
+						type: "SETTLEMENT_DELETED",
+						userId: ctx.session.user.id,
+						groupId: settlement.groupId,
+					},
+				});
+			}
+
 			return ctx.db.settlement.delete({
 				where: { id: input.id },
 			});

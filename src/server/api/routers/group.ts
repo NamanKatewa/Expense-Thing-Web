@@ -176,6 +176,15 @@ export const groupRouter = createTRPCRouter({
 	delete: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
+			await ctx.db.activity.create({
+				data: {
+					type: "GROUP_DELETED",
+					userId: ctx.session.user.id,
+					// No groupId because the group is going to be deleted
+					metadata: { groupId: input.id },
+				},
+			});
+
 			return ctx.db.group.delete({
 				where: { id: input.id },
 			});
