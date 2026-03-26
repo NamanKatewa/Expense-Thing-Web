@@ -106,7 +106,7 @@ export function Sidebar({ session }: SidebarProps) {
 							<Receipt className="h-5 w-5" />
 						</div>
 						<span className="font-bold font-serif text-2xl text-foreground uppercase tracking-tight">
-							ExpenseThing
+							Expense Thing
 						</span>
 					</Link>
 				</div>

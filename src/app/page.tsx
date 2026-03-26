@@ -16,7 +16,7 @@ export default async function LandingPage() {
 							<Receipt className="h-4 w-4" />
 						</div>
 						<span className="font-bold font-serif text-2xl uppercase tracking-tight">
-							ExpenseThing
+							Expense Thing
 						</span>
 					</Link>
 					<div className="flex items-center gap-6">
@@ -61,7 +61,7 @@ export default async function LandingPage() {
 								<Receipt className="h-4 w-4" />
 							</div>
 							<span className="font-bold font-serif text-3xl uppercase">
-								ExpenseThing
+								Expense Thing
 							</span>
 						</div>
 						<p className="font-medium font-sans text-sm uppercase tracking-widest">

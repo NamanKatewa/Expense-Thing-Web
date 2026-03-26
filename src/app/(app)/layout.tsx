@@ -16,7 +16,7 @@ export default async function AppLayout({
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
 			<Sidebar session={session} />
-			<main className="max-w-[1600px] px-6 pt-8 pb-12 lg:px-16 lg:pl-80">
+			<main className="max-w-400 px-6 pt-8 pb-12 lg:px-16 lg:pl-80">
 				{children}
 			</main>
 		</div>
