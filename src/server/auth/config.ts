@@ -4,6 +4,7 @@ import type { DefaultSession, NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 import { db } from "~/server/db";
+import { authConfig as baseConfig } from "./auth.config";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -32,6 +33,8 @@ declare module "next-auth" {
  * @see https://next-auth.js.org/configuration/options
  */
 export const authConfig = {
+	...baseConfig,
+	adapter: PrismaAdapter(db),
 	providers: [
 		Credentials({
 			async authorize(credentials) {
@@ -65,23 +68,4 @@ export const authConfig = {
 			},
 		}),
 	],
-	session: {
-		strategy: "jwt",
-	},
-	adapter: PrismaAdapter(db),
-	callbacks: {
-		async jwt({ token, user }) {
-			if (user) {
-				token.id = user.id;
-			}
-			return token;
-		},
-		session: ({ session, token }) => ({
-			...session,
-			user: {
-				...session.user,
-				id: token.id as string,
-			},
-		}),
-	},
 } satisfies NextAuthConfig;
