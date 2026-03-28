@@ -1,8 +1,15 @@
 "use client";
 
-import { ArrowLeft, Download, FileDown, Plus, Trash2, Users, Wallet } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import {
+	ArrowLeft,
+	Download,
+	FileDown,
+	Plus,
+	Trash2,
+	Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -16,15 +23,10 @@ import {
 import { AddExpenseModal } from "~/components/expense/add-expense-modal";
 import { ExpenseCard } from "~/components/expense/expense-card";
 import { AddMemberModal } from "~/components/group/add-member-modal";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "~/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { api } from "~/trpc/react";
-import { CATEGORY_LABELS } from "~/types";
 import type { Balance, Expense, Group, User } from "~/types";
+import { CATEGORY_LABELS } from "~/types";
 
 export default function GroupDetailPage() {
 	const params = useParams();
@@ -79,14 +81,17 @@ export default function GroupDetailPage() {
 		const doc = new jsPDF();
 		const timestamp = new Date().toLocaleString();
 		const balances = calculateBalances();
-		
-		const totalSpent = group.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+		const totalSpent = group.expenses.reduce(
+			(sum, e) => sum + Number(e.amount),
+			0,
+		);
 
 		// --- BRUTAL STYLING CONFIG ---
-		const BRUTAL_BLACK = [0, 0, 0];
-		const BRUTAL_WHITE = [255, 255, 255];
-		const ACCENT_ORANGE = [224, 93, 54]; // #E05D36
-		const ACCENT_GREEN = [177, 209, 130]; // #B1D182
+		const BRUTAL_BLACK: [number, number, number] = [0, 0, 0];
+		const BRUTAL_WHITE: [number, number, number] = [255, 255, 255];
+		const ACCENT_ORANGE: [number, number, number] = [224, 93, 54]; // #E05D36
+		const _ACCENT_GREEN: [number, number, number] = [177, 209, 130]; // #B1D182
 
 		// 1. HEADER BRANDING
 		doc.setFillColor(...BRUTAL_BLACK);
@@ -100,16 +105,20 @@ export default function GroupDetailPage() {
 		doc.setTextColor(...BRUTAL_BLACK);
 		doc.setFontSize(32);
 		doc.setFont("times", "bold"); // Serif for titles
-		doc.text(group.name.toUpperCase() + ".", 14, 35);
+		doc.text(`${group.name.toUpperCase()}.`, 14, 35);
 
 		// 3. METADATA BOX
 		doc.setLineWidth(1.5);
 		doc.setDrawColor(...BRUTAL_BLACK);
 		doc.line(14, 40, 196, 40);
-		
+
 		doc.setFontSize(7);
 		doc.setFont("helvetica", "bold");
-		doc.text(`OPERATIVE: ${session?.user?.name?.toUpperCase() || "SYSTEM"}`, 14, 45);
+		doc.text(
+			`OPERATIVE: ${session?.user?.name?.toUpperCase() || "SYSTEM"}`,
+			14,
+			45,
+		);
 		doc.text(`GENERATED: ${timestamp.toUpperCase()}`, 14, 49);
 
 		// 4. FINANCIAL SUMMARY (SHADOW BOX)
@@ -119,7 +128,7 @@ export default function GroupDetailPage() {
 		doc.rect(140, 20, 54, 20, "F");
 		doc.setLineWidth(1);
 		doc.rect(140, 20, 54, 20, "S");
-		
+
 		doc.setTextColor(...BRUTAL_BLACK);
 		doc.setFontSize(8);
 		doc.setFont("helvetica", "bold");
@@ -137,38 +146,41 @@ export default function GroupDetailPage() {
 			startY: 75,
 			head: [["OPERATIVE", "ROLE", "NET BALANCE", "STATUS"]],
 			body: balances.map((b) => {
-				const role = group.members.find(m => m.userId === b.userId)?.role || "MEMBER";
+				const role =
+					group.members.find((m) => m.userId === b.userId)?.role || "MEMBER";
 				return [
 					b.user.name?.toUpperCase() || "UNKNOWN",
 					role.toUpperCase(),
 					`${b.amount >= 0 ? "+" : ""}${Number(b.amount).toFixed(2)}`,
-					b.amount >= 0 ? "CREDITOR" : "DEBTOR"
+					b.amount >= 0 ? "CREDITOR" : "DEBTOR",
 				];
 			}),
 			theme: "plain",
-			headStyles: { 
-				fillColor: BRUTAL_BLACK, 
-				textColor: BRUTAL_WHITE, 
+			headStyles: {
+				fillColor: BRUTAL_BLACK,
+				textColor: BRUTAL_WHITE,
 				fontStyle: "bold",
 				fontSize: 9,
-				cellPadding: 4
+				cellPadding: 4,
 			},
-			bodyStyles: { 
+			bodyStyles: {
 				textColor: BRUTAL_BLACK,
 				fontSize: 9,
 				lineWidth: 0.5,
 				lineColor: BRUTAL_BLACK,
-				cellPadding: 4
+				cellPadding: 4,
 			},
 			styles: { font: "helvetica" },
 			columnStyles: {
 				2: { fontStyle: "bold" },
-				3: { fontStyle: "bold" }
-			}
+				3: { fontStyle: "bold" },
+			},
 		});
 
 		// 6. LEDGER SECTION
-		let finalY = (doc as any).lastAutoTable.finalY || 80;
+		let finalY =
+			(doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable
+				.finalY || 80;
 		doc.setFontSize(14);
 		doc.setFont("times", "bold");
 		doc.text("LEDGER RECORD.", 14, finalY + 15);
@@ -184,29 +196,34 @@ export default function GroupDetailPage() {
 				`$${Number(e.amount).toFixed(2)}`,
 			]),
 			theme: "plain",
-			headStyles: { 
-				fillColor: BRUTAL_BLACK, 
-				textColor: BRUTAL_WHITE, 
+			headStyles: {
+				fillColor: BRUTAL_BLACK,
+				textColor: BRUTAL_WHITE,
 				fontStyle: "bold",
 				fontSize: 8,
-				cellPadding: 4
+				cellPadding: 4,
 			},
-			bodyStyles: { 
+			bodyStyles: {
 				textColor: BRUTAL_BLACK,
 				fontSize: 8,
 				lineWidth: 0.5,
 				lineColor: BRUTAL_BLACK,
-				cellPadding: 4
+				cellPadding: 4,
 			},
 			styles: { font: "helvetica" },
-			alternateRowStyles: { fillColor: [240, 240, 240] }
+			alternateRowStyles: { fillColor: [240, 240, 240] },
 		});
 
 		// 7. SETTLEMENTS SECTION
-		finalY = (doc as any).lastAutoTable.finalY || 100;
+		finalY =
+			(doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable
+				.finalY || 100;
 		if (group.settlements.length > 0) {
-			if (finalY > 230) { doc.addPage(); finalY = 20; }
-			
+			if (finalY > 230) {
+				doc.addPage();
+				finalY = 20;
+			}
+
 			doc.setFontSize(14);
 			doc.setFont("times", "bold");
 			doc.text("SETTLEMENTS.", 14, finalY + 15);
@@ -219,30 +236,30 @@ export default function GroupDetailPage() {
 					s.fromUser.name?.toUpperCase() || "UNKNOWN",
 					s.toUser.name?.toUpperCase() || "UNKNOWN",
 					`$${Number(s.amount).toFixed(2)}`,
-					s.description?.toUpperCase() || "-"
+					s.description?.toUpperCase() || "-",
 				]),
 				theme: "plain",
-				headStyles: { 
-					fillColor: BRUTAL_BLACK, 
-					textColor: BRUTAL_WHITE, 
+				headStyles: {
+					fillColor: BRUTAL_BLACK,
+					textColor: BRUTAL_WHITE,
 					fontStyle: "bold",
 					fontSize: 8,
-					cellPadding: 4
+					cellPadding: 4,
 				},
-				bodyStyles: { 
+				bodyStyles: {
 					textColor: BRUTAL_BLACK,
 					fontSize: 8,
 					lineWidth: 0.5,
 					lineColor: BRUTAL_BLACK,
-					cellPadding: 4
+					cellPadding: 4,
 				},
-				styles: { font: "helvetica" }
+				styles: { font: "helvetica" },
 			});
 		}
 
 		// 8. FOOTER
-		const pageCount = (doc as any).internal.getNumberOfPages();
-		for(let i = 1; i <= pageCount; i++) {
+		const pageCount = doc.getNumberOfPages();
+		for (let i = 1; i <= pageCount; i++) {
 			doc.setPage(i);
 			doc.setLineWidth(1.5);
 			doc.setDrawColor(...BRUTAL_BLACK);
@@ -250,7 +267,11 @@ export default function GroupDetailPage() {
 			doc.setFontSize(7);
 			doc.setFont("helvetica", "bold");
 			doc.setTextColor(...BRUTAL_BLACK);
-			doc.text(`EXPENSE THING SYSTEM RECORD // PAGE ${i} OF ${pageCount} // [END_OF_FILE]`, 14, 286);
+			doc.text(
+				`EXPENSE THING SYSTEM RECORD // PAGE ${i} OF ${pageCount} // [END_OF_FILE]`,
+				14,
+				286,
+			);
 		}
 
 		doc.save(`${group.name.toLowerCase().replace(/\s+/g, "-")}-report.pdf`);
@@ -261,10 +282,10 @@ export default function GroupDetailPage() {
 
 		const doc = new jsPDF();
 		const timestamp = new Date().toLocaleString();
-		
-		const BRUTAL_BLACK = [0, 0, 0];
-		const BRUTAL_WHITE = [255, 255, 255];
-		const ACCENT_YELLOW = [255, 217, 61]; // #FFD93D
+
+		const BRUTAL_BLACK: [number, number, number] = [0, 0, 0];
+		const BRUTAL_WHITE: [number, number, number] = [255, 255, 255];
+		const ACCENT_YELLOW: [number, number, number] = [255, 217, 61]; // #FFD93D
 
 		// Brand Header
 		doc.setFillColor(...BRUTAL_BLACK);
@@ -278,11 +299,15 @@ export default function GroupDetailPage() {
 		doc.setTextColor(...BRUTAL_BLACK);
 		doc.setFontSize(28);
 		doc.setFont("times", "bold");
-		doc.text(group.name.toUpperCase() + ".", 14, 35);
-		
+		doc.text(`${group.name.toUpperCase()}.`, 14, 35);
+
 		doc.setFontSize(9);
 		doc.setFont("helvetica", "bold");
-		doc.text(`OPERATIVE DIRECTORY | GENERATED: ${timestamp.toUpperCase()}`, 14, 43);
+		doc.text(
+			`OPERATIVE DIRECTORY | GENERATED: ${timestamp.toUpperCase()}`,
+			14,
+			43,
+		);
 
 		// Line
 		doc.setLineWidth(1.5);
@@ -296,7 +321,7 @@ export default function GroupDetailPage() {
 		doc.rect(140, 20, 54, 15, "F");
 		doc.setLineWidth(1);
 		doc.rect(140, 20, 54, 15, "S");
-		
+
 		doc.setTextColor(...BRUTAL_BLACK);
 		doc.setFontSize(8);
 		doc.setFont("helvetica", "bold");
@@ -318,24 +343,26 @@ export default function GroupDetailPage() {
 				m.user.name?.toUpperCase() || "UNKNOWN",
 				m.user.email || "N/A",
 				m.role.toUpperCase(),
-				m.joinedAt ? new Date(m.joinedAt).toLocaleDateString().toUpperCase() : "N/A"
+				m.joinedAt
+					? new Date(m.joinedAt).toLocaleDateString().toUpperCase()
+					: "N/A",
 			]),
 			theme: "plain",
-			headStyles: { 
-				fillColor: BRUTAL_BLACK, 
-				textColor: BRUTAL_WHITE, 
+			headStyles: {
+				fillColor: BRUTAL_BLACK,
+				textColor: BRUTAL_WHITE,
 				fontStyle: "bold",
 				fontSize: 9,
-				cellPadding: 4
+				cellPadding: 4,
 			},
-			bodyStyles: { 
+			bodyStyles: {
 				textColor: BRUTAL_BLACK,
 				fontSize: 9,
 				lineWidth: 0.5,
 				lineColor: BRUTAL_BLACK,
-				cellPadding: 4
+				cellPadding: 4,
 			},
-			styles: { font: "helvetica" }
+			styles: { font: "helvetica" },
 		});
 
 		// Footer
@@ -344,7 +371,11 @@ export default function GroupDetailPage() {
 		doc.line(14, 280, 196, 280);
 		doc.setFontSize(7);
 		doc.setFont("helvetica", "bold");
-		doc.text(`EXPENSE THING SYSTEM RECORD // OPERATIVE_DIRECTORY // [END_OF_FILE]`, 14, 286);
+		doc.text(
+			`EXPENSE THING SYSTEM RECORD // OPERATIVE_DIRECTORY // [END_OF_FILE]`,
+			14,
+			286,
+		);
 
 		doc.save(`${group.name.toLowerCase().replace(/\s+/g, "-")}-operatives.pdf`);
 	};
@@ -528,14 +559,26 @@ export default function GroupDetailPage() {
 			<div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
 				<div className="space-y-16 lg:col-span-2">
 					<Tabs defaultValue="balances">
-						<TabsList className="mb-12 w-full justify-start gap-8 bg-transparent p-0" variant="line">
-							<TabsTrigger className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white" value="balances">
+						<TabsList
+							className="mb-12 w-full justify-start gap-8 bg-transparent p-0"
+							variant="line"
+						>
+							<TabsTrigger
+								className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white"
+								value="balances"
+							>
 								Balances.
 							</TabsTrigger>
-							<TabsTrigger className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white" value="ledger">
+							<TabsTrigger
+								className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white"
+								value="ledger"
+							>
 								Ledger.
 							</TabsTrigger>
-							<TabsTrigger className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white" value="export">
+							<TabsTrigger
+								className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white"
+								value="export"
+							>
 								Export.
 							</TabsTrigger>
 						</TabsList>
@@ -602,7 +645,8 @@ export default function GroupDetailPage() {
 										Syndicate Report
 									</h3>
 									<p className="mt-2 font-bold font-sans text-xs uppercase tracking-widest opacity-70">
-										Export all standings, ledger entries, and historical data for this association.
+										Export all standings, ledger entries, and historical data
+										for this association.
 									</p>
 									<button
 										className="mt-8 flex w-full items-center justify-center gap-3 border-4 border-black bg-black py-4 font-black font-sans text-sm text-white uppercase tracking-widest transition-all hover:bg-white hover:text-black dark:border-white"
@@ -619,7 +663,8 @@ export default function GroupDetailPage() {
 										Member Summary
 									</h3>
 									<p className="mt-2 font-bold font-sans text-xs uppercase tracking-widest opacity-70">
-										Export a list of active operatives and their contact information.
+										Export a list of active operatives and their contact
+										information.
 									</p>
 									<button
 										className="mt-8 flex w-full items-center justify-center gap-3 border-4 border-black bg-black py-4 font-black font-sans text-sm text-white uppercase tracking-widest transition-all hover:bg-white hover:text-black dark:border-white"

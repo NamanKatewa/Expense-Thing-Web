@@ -14,10 +14,12 @@ export function BalanceSummary({
 }: BalanceSummaryProps) {
 	// A positive balance means the user is OWED (a creditor).
 	// A negative balance means the user OWES (a debtor).
-	
+
 	const currentUserBalance = balances.find((b) => b.userId === currentUserId);
-	const isCurrentUserCreditor = currentUserBalance && currentUserBalance.amount > 0;
-	const isCurrentUserDebtor = currentUserBalance && currentUserBalance.amount < 0;
+	const isCurrentUserCreditor =
+		currentUserBalance && currentUserBalance.amount > 0;
+	const isCurrentUserDebtor =
+		currentUserBalance && currentUserBalance.amount < 0;
 
 	// If I (current user) am a DEBTOR (negative balance), I see OBLIGATIONS to people who are CREDITORS (positive balance).
 	// If I (current user) am a CREDITOR (positive balance), I see RECEIVABLES from people who are DEBTORS (negative balance).
@@ -115,15 +117,25 @@ export function BalanceSummary({
 												{creditor.user.name}
 											</span>
 										</div>
-										<span className="shrink-0 font-bold font-serif text-xl text-red-600 dark:text-red-400">
-											-${Math.min(Math.abs(currentUserBalance.amount), creditor.amount).toFixed(2)}
+										<span className="shrink-0 font-bold font-serif text-red-600 text-xl dark:text-red-400">
+											-$
+											{Math.min(
+												Math.abs(currentUserBalance.amount),
+												creditor.amount,
+											).toFixed(2)}
 										</span>
 									</div>
 									{onSettle && (
 										<button
 											className="mt-6 w-full border-2 border-black bg-black py-3 font-black font-sans text-[10px] text-white uppercase tracking-widest transition-all hover:bg-white hover:text-black dark:border-white dark:bg-white dark:text-black dark:hover:bg-black dark:hover:text-white"
 											onClick={() =>
-												onSettle(creditor.user, Math.min(Math.abs(currentUserBalance.amount), creditor.amount))
+												onSettle(
+													creditor.user,
+													Math.min(
+														Math.abs(currentUserBalance.amount),
+														creditor.amount,
+													),
+												)
 											}
 										>
 											Settle Balance
@@ -161,8 +173,12 @@ export function BalanceSummary({
 											</span>
 										</div>
 										<div className="flex items-center">
-											<span className="font-bold font-serif text-xl text-green-600 dark:text-green-400">
-												+${Math.min(currentUserBalance.amount, Math.abs(debtor.amount)).toFixed(2)}
+											<span className="font-bold font-serif text-green-600 text-xl dark:text-green-400">
+												+$
+												{Math.min(
+													currentUserBalance.amount,
+													Math.abs(debtor.amount),
+												).toFixed(2)}
 											</span>
 										</div>
 									</div>

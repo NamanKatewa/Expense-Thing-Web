@@ -37,7 +37,8 @@ export default function SettlementsPage() {
 	);
 
 	const utils = api.useUtils();
-	const { data: groups, isLoading: groupsLoading } = api.group.getAll.useQuery();
+	const { data: groups, isLoading: groupsLoading } =
+		api.group.getAll.useQuery();
 
 	const { data: suggestedSettlements, isLoading: suggestionsLoading } =
 		api.settlement.getSuggested.useQuery(
