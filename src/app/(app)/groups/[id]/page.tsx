@@ -1,22 +1,29 @@
 "use client";
 
-import { ArrowLeft, Plus, Settings, Users, Wallet } from "lucide-react";
+import { ArrowLeft, Download, FileDown, Plus, Trash2, Users, Wallet } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { BalanceSummary } from "~/components/common/balance-summary";
 import { ConfirmModal } from "~/components/common/confirm-modal";
+import {
+	CreateSettlementModal,
+	type SettlementSuggestion,
+} from "~/components/common/create-settlement-modal";
 import { AddExpenseModal } from "~/components/expense/add-expense-modal";
 import { ExpenseCard } from "~/components/expense/expense-card";
 import { AddMemberModal } from "~/components/group/add-member-modal";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "~/components/ui/tabs";
 import { api } from "~/trpc/react";
+import { CATEGORY_LABELS } from "~/types";
 import type { Balance, Expense, Group, User } from "~/types";
 
 export default function GroupDetailPage() {
@@ -28,6 +35,8 @@ export default function GroupDetailPage() {
 	const [showAddMember, setShowAddMember] = useState(false);
 	const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
 	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+	const [showSettlementModal, setShowSettlementModal] =
+		useState<SettlementSuggestion | null>(null);
 
 	const { data: group, isLoading } = api.group.getById.useQuery({ id });
 
@@ -62,6 +71,282 @@ export default function GroupDetailPage() {
 			deleteExpenseMutation.mutate({ id: expenseToDelete.id });
 			setExpenseToDelete(null);
 		}
+	};
+
+	const exportSyndicateReport = () => {
+		if (!group) return;
+
+		const doc = new jsPDF();
+		const timestamp = new Date().toLocaleString();
+		const balances = calculateBalances();
+		
+		const totalSpent = group.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+		// --- BRUTAL STYLING CONFIG ---
+		const BRUTAL_BLACK = [0, 0, 0];
+		const BRUTAL_WHITE = [255, 255, 255];
+		const ACCENT_ORANGE = [224, 93, 54]; // #E05D36
+		const ACCENT_GREEN = [177, 209, 130]; // #B1D182
+
+		// 1. HEADER BRANDING
+		doc.setFillColor(...BRUTAL_BLACK);
+		doc.rect(14, 10, 40, 8, "F");
+		doc.setFontSize(8);
+		doc.setTextColor(...BRUTAL_WHITE);
+		doc.setFont("helvetica", "bold");
+		doc.text("EXPENSE THING", 17, 15.5);
+
+		// 2. MAIN TITLE (BRUTALIST STYLE)
+		doc.setTextColor(...BRUTAL_BLACK);
+		doc.setFontSize(32);
+		doc.setFont("times", "bold"); // Serif for titles
+		doc.text(group.name.toUpperCase() + ".", 14, 35);
+
+		// 3. METADATA BOX
+		doc.setLineWidth(1.5);
+		doc.setDrawColor(...BRUTAL_BLACK);
+		doc.line(14, 40, 196, 40);
+		
+		doc.setFontSize(7);
+		doc.setFont("helvetica", "bold");
+		doc.text(`OPERATIVE: ${session?.user?.name?.toUpperCase() || "SYSTEM"}`, 14, 45);
+		doc.text(`GENERATED: ${timestamp.toUpperCase()}`, 14, 49);
+
+		// 4. FINANCIAL SUMMARY (SHADOW BOX)
+		doc.setFillColor(...BRUTAL_BLACK);
+		doc.rect(142, 22, 54, 20, "F"); // Shadow
+		doc.setFillColor(...ACCENT_ORANGE);
+		doc.rect(140, 20, 54, 20, "F");
+		doc.setLineWidth(1);
+		doc.rect(140, 20, 54, 20, "S");
+		
+		doc.setTextColor(...BRUTAL_BLACK);
+		doc.setFontSize(8);
+		doc.setFont("helvetica", "bold");
+		doc.text("TOTAL BURN", 144, 26);
+		doc.setFontSize(16);
+		doc.setFont("times", "bold");
+		doc.text(`$${totalSpent.toFixed(2)}`, 144, 34);
+
+		// 5. STANDINGS SECTION
+		doc.setFontSize(14);
+		doc.setFont("times", "bold");
+		doc.text("CURRENT STANDINGS.", 14, 70);
+
+		autoTable(doc, {
+			startY: 75,
+			head: [["OPERATIVE", "ROLE", "NET BALANCE", "STATUS"]],
+			body: balances.map((b) => {
+				const role = group.members.find(m => m.userId === b.userId)?.role || "MEMBER";
+				return [
+					b.user.name?.toUpperCase() || "UNKNOWN",
+					role.toUpperCase(),
+					`${b.amount >= 0 ? "+" : ""}${Number(b.amount).toFixed(2)}`,
+					b.amount >= 0 ? "CREDITOR" : "DEBTOR"
+				];
+			}),
+			theme: "plain",
+			headStyles: { 
+				fillColor: BRUTAL_BLACK, 
+				textColor: BRUTAL_WHITE, 
+				fontStyle: "bold",
+				fontSize: 9,
+				cellPadding: 4
+			},
+			bodyStyles: { 
+				textColor: BRUTAL_BLACK,
+				fontSize: 9,
+				lineWidth: 0.5,
+				lineColor: BRUTAL_BLACK,
+				cellPadding: 4
+			},
+			styles: { font: "helvetica" },
+			columnStyles: {
+				2: { fontStyle: "bold" },
+				3: { fontStyle: "bold" }
+			}
+		});
+
+		// 6. LEDGER SECTION
+		let finalY = (doc as any).lastAutoTable.finalY || 80;
+		doc.setFontSize(14);
+		doc.setFont("times", "bold");
+		doc.text("LEDGER RECORD.", 14, finalY + 15);
+
+		autoTable(doc, {
+			startY: finalY + 20,
+			head: [["DATE", "DESCRIPTION", "CATEGORY", "PAID BY", "AMOUNT"]],
+			body: group.expenses.map((e) => [
+				new Date(e.date).toLocaleDateString().toUpperCase(),
+				e.description.toUpperCase(),
+				CATEGORY_LABELS[e.category].toUpperCase(),
+				e.payers[0]?.user.name?.toUpperCase() || "UNKNOWN",
+				`$${Number(e.amount).toFixed(2)}`,
+			]),
+			theme: "plain",
+			headStyles: { 
+				fillColor: BRUTAL_BLACK, 
+				textColor: BRUTAL_WHITE, 
+				fontStyle: "bold",
+				fontSize: 8,
+				cellPadding: 4
+			},
+			bodyStyles: { 
+				textColor: BRUTAL_BLACK,
+				fontSize: 8,
+				lineWidth: 0.5,
+				lineColor: BRUTAL_BLACK,
+				cellPadding: 4
+			},
+			styles: { font: "helvetica" },
+			alternateRowStyles: { fillColor: [240, 240, 240] }
+		});
+
+		// 7. SETTLEMENTS SECTION
+		finalY = (doc as any).lastAutoTable.finalY || 100;
+		if (group.settlements.length > 0) {
+			if (finalY > 230) { doc.addPage(); finalY = 20; }
+			
+			doc.setFontSize(14);
+			doc.setFont("times", "bold");
+			doc.text("SETTLEMENTS.", 14, finalY + 15);
+
+			autoTable(doc, {
+				startY: finalY + 22,
+				head: [["DATE", "FROM", "TO", "AMOUNT", "NOTE"]],
+				body: group.settlements.map((s) => [
+					new Date(s.date).toLocaleDateString().toUpperCase(),
+					s.fromUser.name?.toUpperCase() || "UNKNOWN",
+					s.toUser.name?.toUpperCase() || "UNKNOWN",
+					`$${Number(s.amount).toFixed(2)}`,
+					s.description?.toUpperCase() || "-"
+				]),
+				theme: "plain",
+				headStyles: { 
+					fillColor: BRUTAL_BLACK, 
+					textColor: BRUTAL_WHITE, 
+					fontStyle: "bold",
+					fontSize: 8,
+					cellPadding: 4
+				},
+				bodyStyles: { 
+					textColor: BRUTAL_BLACK,
+					fontSize: 8,
+					lineWidth: 0.5,
+					lineColor: BRUTAL_BLACK,
+					cellPadding: 4
+				},
+				styles: { font: "helvetica" }
+			});
+		}
+
+		// 8. FOOTER
+		const pageCount = (doc as any).internal.getNumberOfPages();
+		for(let i = 1; i <= pageCount; i++) {
+			doc.setPage(i);
+			doc.setLineWidth(1.5);
+			doc.setDrawColor(...BRUTAL_BLACK);
+			doc.line(14, 280, 196, 280);
+			doc.setFontSize(7);
+			doc.setFont("helvetica", "bold");
+			doc.setTextColor(...BRUTAL_BLACK);
+			doc.text(`EXPENSE THING SYSTEM RECORD // PAGE ${i} OF ${pageCount} // [END_OF_FILE]`, 14, 286);
+		}
+
+		doc.save(`${group.name.toLowerCase().replace(/\s+/g, "-")}-report.pdf`);
+	};
+
+	const exportMemberSummary = () => {
+		if (!group) return;
+
+		const doc = new jsPDF();
+		const timestamp = new Date().toLocaleString();
+		
+		const BRUTAL_BLACK = [0, 0, 0];
+		const BRUTAL_WHITE = [255, 255, 255];
+		const ACCENT_YELLOW = [255, 217, 61]; // #FFD93D
+
+		// Brand Header
+		doc.setFillColor(...BRUTAL_BLACK);
+		doc.rect(14, 10, 40, 8, "F");
+		doc.setFontSize(8);
+		doc.setTextColor(...BRUTAL_WHITE);
+		doc.setFont("helvetica", "bold");
+		doc.text("EXPENSE THING", 17, 15.5);
+
+		// Header
+		doc.setTextColor(...BRUTAL_BLACK);
+		doc.setFontSize(28);
+		doc.setFont("times", "bold");
+		doc.text(group.name.toUpperCase() + ".", 14, 35);
+		
+		doc.setFontSize(9);
+		doc.setFont("helvetica", "bold");
+		doc.text(`OPERATIVE DIRECTORY | GENERATED: ${timestamp.toUpperCase()}`, 14, 43);
+
+		// Line
+		doc.setLineWidth(1.5);
+		doc.setDrawColor(...BRUTAL_BLACK);
+		doc.line(14, 48, 196, 48);
+
+		// Summary Box (Yellow)
+		doc.setFillColor(...BRUTAL_BLACK);
+		doc.rect(142, 22, 54, 15, "F"); // Shadow
+		doc.setFillColor(...ACCENT_YELLOW);
+		doc.rect(140, 20, 54, 15, "F");
+		doc.setLineWidth(1);
+		doc.rect(140, 20, 54, 15, "S");
+		
+		doc.setTextColor(...BRUTAL_BLACK);
+		doc.setFontSize(8);
+		doc.setFont("helvetica", "bold");
+		doc.text("TOTAL OPERATIVES", 144, 26);
+		doc.setFontSize(14);
+		doc.setFont("times", "bold");
+		doc.text(`${group.members.length} MEMBERS`, 144, 32);
+
+		// Members Section
+		doc.setTextColor(...BRUTAL_BLACK);
+		doc.setFontSize(14);
+		doc.setFont("times", "bold");
+		doc.text("ACTIVE OPERATIVES.", 14, 65);
+
+		autoTable(doc, {
+			startY: 70,
+			head: [["NAME", "EMAIL", "ROLE", "JOINED"]],
+			body: group.members.map((m) => [
+				m.user.name?.toUpperCase() || "UNKNOWN",
+				m.user.email || "N/A",
+				m.role.toUpperCase(),
+				m.joinedAt ? new Date(m.joinedAt).toLocaleDateString().toUpperCase() : "N/A"
+			]),
+			theme: "plain",
+			headStyles: { 
+				fillColor: BRUTAL_BLACK, 
+				textColor: BRUTAL_WHITE, 
+				fontStyle: "bold",
+				fontSize: 9,
+				cellPadding: 4
+			},
+			bodyStyles: { 
+				textColor: BRUTAL_BLACK,
+				fontSize: 9,
+				lineWidth: 0.5,
+				lineColor: BRUTAL_BLACK,
+				cellPadding: 4
+			},
+			styles: { font: "helvetica" }
+		});
+
+		// Footer
+		doc.setLineWidth(1.5);
+		doc.setDrawColor(...BRUTAL_BLACK);
+		doc.line(14, 280, 196, 280);
+		doc.setFontSize(7);
+		doc.setFont("helvetica", "bold");
+		doc.text(`EXPENSE THING SYSTEM RECORD // OPERATIVE_DIRECTORY // [END_OF_FILE]`, 14, 286);
+
+		doc.save(`${group.name.toLowerCase().replace(/\s+/g, "-")}-operatives.pdf`);
 	};
 
 	if (isLoading) {
@@ -162,7 +447,7 @@ export default function GroupDetailPage() {
 							</p>
 						)}
 					</div>
-					<div className="flex gap-4">
+					<div className="flex flex-wrap gap-4">
 						<AddExpenseModal
 							group={group as unknown as Group}
 							onSubmit={(data) => {
@@ -236,77 +521,117 @@ export default function GroupDetailPage() {
 								</button>
 							}
 						/>
-						<DropdownMenu>
-							<DropdownMenuTrigger>
-								<div className="flex h-16 w-16 items-center justify-center border-4 border-black bg-white transition-all hover:bg-black hover:text-white dark:border-white dark:bg-black dark:hover:bg-white dark:hover:text-black">
-									<Settings className="h-8 w-8 stroke-[2]" />
-								</div>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent
-								align="end"
-								className="brutal-shadow rounded-none border-2 border-black dark:border-white"
-							>
-								<DropdownMenuItem
-									className="cursor-pointer rounded-none font-black font-sans text-destructive text-red-600 text-xs uppercase tracking-widest dark:text-red-500"
-									onClick={() => setShowDeleteGroupConfirm(true)}
-								>
-									Delete Group
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
 					</div>
 				</div>
 			</div>
 
 			<div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
 				<div className="space-y-16 lg:col-span-2">
-					<section>
-						<div className="mb-10 flex items-center gap-4">
-							<div className="flex h-10 w-10 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-								<Wallet className="h-5 w-5" />
-							</div>
-							<h2 className="font-bold font-serif text-4xl uppercase">
-								Balances
-							</h2>
-						</div>
-						<BalanceSummary
-							balances={balances}
-							currentUserId={session?.user?.id}
-						/>
-					</section>
+					<Tabs defaultValue="balances">
+						<TabsList className="mb-12 w-full justify-start gap-8 bg-transparent p-0" variant="line">
+							<TabsTrigger className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white" value="balances">
+								Balances.
+							</TabsTrigger>
+							<TabsTrigger className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white" value="ledger">
+								Ledger.
+							</TabsTrigger>
+							<TabsTrigger className="px-0 py-4 font-bold font-serif text-3xl uppercase tracking-tighter data-[active]:text-black dark:data-[active]:text-white" value="export">
+								Export.
+							</TabsTrigger>
+						</TabsList>
 
-					<section>
-						<div className="mb-10 flex items-center gap-4 border-black border-b-4 pb-4 dark:border-white">
-							<div className="flex h-10 w-10 items-center justify-center border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black">
-								<Wallet className="h-5 w-5" />
-							</div>
-							<h2 className="flex-1 font-bold font-serif text-4xl uppercase">
-								Ledger
-							</h2>
-							<span className="font-black font-sans text-xs uppercase tracking-widest opacity-40">
-								{group.expenses.length} TOTAL ENTRIES
-							</span>
-						</div>
+						<TabsContent className="space-y-12" value="balances">
+							<BalanceSummary
+								balances={balances}
+								currentUserId={session?.user?.id}
+								onSettle={(user, amount) => {
+									setShowSettlementModal({
+										fromUserId: session?.user?.id || "",
+										toUserId: user.id,
+										amount,
+										fromUser: {
+											id: session?.user?.id || "",
+											name: session?.user?.name || null,
+											image: session?.user?.image || null,
+										},
+										toUser: {
+											id: user.id,
+											name: user.name || null,
+											image: user.image || null,
+										},
+									});
+								}}
+							/>
+						</TabsContent>
 
-						<div className="space-y-6">
-							{group.expenses.length > 0 ? (
-								group.expenses.map((expense) => (
-									<ExpenseCard
-										currentUserId={session?.user?.id}
-										expense={expense as unknown as Expense}
-										key={expense.id}
-										onDelete={(e) => setExpenseToDelete(e)}
-									/>
-								))
-							) : (
-								<div className="border-4 border-black border-dashed py-24 text-center dark:border-white">
-									<p className="font-bold font-sans text-lg uppercase tracking-widest opacity-40">
-										The Ledger is empty. No debts recorded.
+						<TabsContent value="ledger">
+							<div className="mb-8 flex items-center justify-between border-black border-b-4 pb-4 dark:border-white">
+								<h2 className="font-bold font-serif text-4xl uppercase">
+									Records
+								</h2>
+								<span className="font-black font-sans text-xs uppercase tracking-widest opacity-40">
+									{group.expenses.length} TOTAL ENTRIES
+								</span>
+							</div>
+
+							<div className="space-y-6">
+								{group.expenses.length > 0 ? (
+									group.expenses.map((expense) => (
+										<ExpenseCard
+											currentUserId={session?.user?.id}
+											expense={expense as unknown as Expense}
+											key={expense.id}
+											onDelete={(e) => setExpenseToDelete(e)}
+										/>
+									))
+								) : (
+									<div className="border-4 border-black border-dashed py-24 text-center dark:border-white">
+										<p className="font-bold font-sans text-lg uppercase tracking-widest opacity-40">
+											The Ledger is empty. No debts recorded.
+										</p>
+									</div>
+								)}
+							</div>
+						</TabsContent>
+
+						<TabsContent value="export">
+							<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+								<div className="brutal-shadow border-4 border-black bg-[#B1D182] p-8 dark:border-white dark:text-black">
+									<FileDown className="mb-4 h-12 w-12 stroke-[2.5]" />
+									<h3 className="font-bold font-serif text-3xl uppercase leading-tight">
+										Syndicate Report
+									</h3>
+									<p className="mt-2 font-bold font-sans text-xs uppercase tracking-widest opacity-70">
+										Export all standings, ledger entries, and historical data for this association.
 									</p>
+									<button
+										className="mt-8 flex w-full items-center justify-center gap-3 border-4 border-black bg-black py-4 font-black font-sans text-sm text-white uppercase tracking-widest transition-all hover:bg-white hover:text-black dark:border-white"
+										onClick={exportSyndicateReport}
+									>
+										<Download className="h-5 w-5" />
+										Download PDF
+									</button>
 								</div>
-							)}
-						</div>
-					</section>
+
+								<div className="brutal-shadow border-4 border-black bg-[#FFD93D] p-8 dark:border-white dark:text-black">
+									<Users className="mb-4 h-12 w-12 stroke-[2.5]" />
+									<h3 className="font-bold font-serif text-3xl uppercase leading-tight">
+										Member Summary
+									</h3>
+									<p className="mt-2 font-bold font-sans text-xs uppercase tracking-widest opacity-70">
+										Export a list of active operatives and their contact information.
+									</p>
+									<button
+										className="mt-8 flex w-full items-center justify-center gap-3 border-4 border-black bg-black py-4 font-black font-sans text-sm text-white uppercase tracking-widest transition-all hover:bg-white hover:text-black dark:border-white"
+										onClick={exportMemberSummary}
+									>
+										<Download className="h-5 w-5" />
+										Download PDF
+									</button>
+								</div>
+							</div>
+						</TabsContent>
+					</Tabs>
 				</div>
 
 				<div className="space-y-12">
@@ -372,6 +697,16 @@ export default function GroupDetailPage() {
 							</div>
 						</div>
 					</section>
+
+					<div className="pt-8">
+						<button
+							className="brutal-shadow flex w-full items-center justify-center gap-3 border-4 border-black bg-white py-4 font-black font-sans text-black text-sm uppercase tracking-widest transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-red-500 hover:text-white dark:border-white dark:bg-black dark:hover:bg-red-600 dark:hover:text-white"
+							onClick={() => setShowDeleteGroupConfirm(true)}
+						>
+							<Trash2 className="h-5 w-5 stroke-[2]" />
+							Purge Association
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -403,6 +738,18 @@ export default function GroupDetailPage() {
 						void utils.group.getById.invalidate({ id });
 						void utils.dashboard.invalidate();
 					}}
+				/>
+			)}
+
+			{showSettlementModal && (
+				<CreateSettlementModal
+					groupId={id}
+					onClose={() => setShowSettlementModal(null)}
+					onSuccess={() => {
+						void utils.group.getById.invalidate({ id });
+						void utils.dashboard.invalidate();
+					}}
+					suggestion={showSettlementModal}
 				/>
 			)}
 		</div>

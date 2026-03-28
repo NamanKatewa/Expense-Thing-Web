@@ -35,6 +35,7 @@ export interface GroupMember {
 	userId: string;
 	groupId: string;
 	role: MemberRole;
+	joinedAt: string;
 	user: User;
 }
 

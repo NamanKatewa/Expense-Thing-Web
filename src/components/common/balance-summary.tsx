@@ -12,6 +12,16 @@ export function BalanceSummary({
 	currentUserId,
 	onSettle,
 }: BalanceSummaryProps) {
+	// A positive balance means the user is OWED (a creditor).
+	// A negative balance means the user OWES (a debtor).
+	
+	const currentUserBalance = balances.find((b) => b.userId === currentUserId);
+	const isCurrentUserCreditor = currentUserBalance && currentUserBalance.amount > 0;
+	const isCurrentUserDebtor = currentUserBalance && currentUserBalance.amount < 0;
+
+	// If I (current user) am a DEBTOR (negative balance), I see OBLIGATIONS to people who are CREDITORS (positive balance).
+	// If I (current user) am a CREDITOR (positive balance), I see RECEIVABLES from people who are DEBTORS (negative balance).
+
 	const debtors = balances.filter(
 		(b) => b.amount < 0 && b.userId !== currentUserId,
 	);
@@ -38,8 +48,6 @@ export function BalanceSummary({
 			</div>
 		);
 	}
-
-	const currentUserBalance = balances.find((b) => b.userId === currentUserId);
 
 	return (
 		<div className="space-y-8">
@@ -82,71 +90,79 @@ export function BalanceSummary({
 			)}
 
 			<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-				{debtors.length > 0 && (
+				{/* 
+					OBLIGATIONS: People I need to pay.
+					This section is relevant if I have a negative balance.
+					I should pay the people who have positive balances (creditors).
+				*/}
+				{isCurrentUserDebtor && creditors.length > 0 && (
 					<div className="brutal-shadow border-4 border-black bg-white p-8 dark:border-white dark:bg-black">
 						<h4 className="mb-6 font-black font-sans text-xs uppercase tracking-[0.3em] opacity-40">
 							Obligations
 						</h4>
 						<div className="space-y-4">
-							{debtors.map((debtor) => (
+							{creditors.map((creditor) => (
 								<div
 									className="border-2 border-black bg-[#F0F0F0] p-6 dark:border-white dark:bg-zinc-900"
-									key={debtor.userId}
+									key={creditor.userId}
 								>
 									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-4">
-											<div className="flex h-10 w-10 items-center justify-center border-2 border-black bg-white font-black font-sans text-[10px] text-black uppercase dark:border-white dark:bg-black dark:text-white">
-												{getInitials(debtor.user.name)}
+										<div className="flex min-w-0 items-center gap-4">
+											<div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-black bg-white font-black font-sans text-[10px] text-black uppercase dark:border-white dark:bg-black dark:text-white">
+												{getInitials(creditor.user.name)}
 											</div>
-											<span className="font-bold font-sans text-sm uppercase tracking-tight">
-												{debtor.user.name}
+											<span className="truncate font-bold font-sans text-sm uppercase tracking-tight">
+												{creditor.user.name}
 											</span>
 										</div>
-										<div className="flex items-center gap-6">
-											<span className="font-bold font-serif text-xl">
-												-${Math.abs(debtor.amount).toFixed(2)}
-											</span>
-											{onSettle && (
-												<button
-													className="border-2 border-black bg-black px-4 py-2 font-black font-sans text-[10px] text-white uppercase tracking-widest transition-all hover:bg-white hover:text-black dark:border-white dark:bg-white dark:text-black dark:hover:bg-black dark:hover:text-white"
-													onClick={() =>
-														onSettle(debtor.user, Math.abs(debtor.amount))
-													}
-												>
-													Settle
-												</button>
-											)}
-										</div>
+										<span className="shrink-0 font-bold font-serif text-xl text-red-600 dark:text-red-400">
+											-${Math.min(Math.abs(currentUserBalance.amount), creditor.amount).toFixed(2)}
+										</span>
 									</div>
+									{onSettle && (
+										<button
+											className="mt-6 w-full border-2 border-black bg-black py-3 font-black font-sans text-[10px] text-white uppercase tracking-widest transition-all hover:bg-white hover:text-black dark:border-white dark:bg-white dark:text-black dark:hover:bg-black dark:hover:text-white"
+											onClick={() =>
+												onSettle(creditor.user, Math.min(Math.abs(currentUserBalance.amount), creditor.amount))
+											}
+										>
+											Settle Balance
+										</button>
+									)}
 								</div>
 							))}
 						</div>
 					</div>
 				)}
 
-				{creditors.length > 0 && (
+				{/* 
+					RECEIVABLES: People who need to pay me.
+					This section is relevant if I have a positive balance.
+					I am owed money by the people who have negative balances (debtors).
+				*/}
+				{isCurrentUserCreditor && debtors.length > 0 && (
 					<div className="brutal-shadow border-4 border-black bg-white p-8 dark:border-white dark:bg-black">
 						<h4 className="mb-6 font-black font-sans text-xs uppercase tracking-[0.3em] opacity-40">
 							Receivables
 						</h4>
 						<div className="space-y-4">
-							{creditors.map((creditor) => (
+							{debtors.map((debtor) => (
 								<div
 									className="border-2 border-black bg-white p-6 dark:border-white dark:bg-black"
-									key={creditor.userId}
+									key={debtor.userId}
 								>
 									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-4">
-											<div className="flex h-10 w-10 items-center justify-center border-2 border-black bg-black font-black font-sans text-[10px] text-white uppercase dark:border-white dark:bg-white dark:text-black">
-												{getInitials(creditor.user.name)}
+										<div className="flex min-w-0 items-center gap-4">
+											<div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-black bg-black font-black font-sans text-[10px] text-white uppercase dark:border-white dark:bg-white dark:text-black">
+												{getInitials(debtor.user.name)}
 											</div>
-											<span className="font-bold font-sans text-sm uppercase tracking-tight">
-												{creditor.user.name}
+											<span className="truncate font-bold font-sans text-sm uppercase tracking-tight">
+												{debtor.user.name}
 											</span>
 										</div>
 										<div className="flex items-center">
-											<span className="font-bold font-serif text-xl">
-												+${creditor.amount.toFixed(2)}
+											<span className="font-bold font-serif text-xl text-green-600 dark:text-green-400">
+												+${Math.min(currentUserBalance.amount, Math.abs(debtor.amount)).toFixed(2)}
 											</span>
 										</div>
 									</div>
